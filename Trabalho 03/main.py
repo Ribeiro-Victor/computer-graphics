@@ -113,7 +113,6 @@ def reshape(width, height):
     window_width = width
     window_height = height
     glViewport(0,0,width,height)
-    glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluOrtho2D(0,width,height,0)
     glMatrixMode (GL_MODELVIEW)
