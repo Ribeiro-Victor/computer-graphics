@@ -1,36 +1,26 @@
+from OpenGL.GLUT import *
+from OpenGL.GL import *
+from OpenGL.GLU import *
+from OpenGL.GLUT.fonts import GLUT_BITMAP_HELVETICA_18
 import sys
 import random
 import math
 
-from OpenGL.GLUT import *
-from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT.fonts import GLUT_BITMAP_9_BY_15
-
-ang = 0
-
-POINT_DIAMETER = 30
-WINDOW_WIDTH = 1400
-WINDOW_HEIGHT = 1000
-
+POINT_DIAMETER = 24
+window_width = 1000
+window_height = 800
 spline_degree = 1
-NODES = [i for i in range(13)]
-
 control_points = []
 
 def initControlPoints(n = 6):
-    # global control_points
+    global control_points
+    global window_width
+    global window_height
     control_points.clear()
     for i in range(n):
-        x = 100 + ((WINDOW_WIDTH - 200) / (n-1)) * i
-        y = random.randint(POINT_DIAMETER/2, WINDOW_HEIGHT-(POINT_DIAMETER/2))
+        x = 100 + ((window_width - 200) / (n-1)) * i
+        y = 30 + random.randint(POINT_DIAMETER/2, window_height-(POINT_DIAMETER/2))
         control_points.append([x,y])
-    # control_points = [[100, 166.10502816454354],
-    #                 [168, 400.7690049320902],
-    #                 [340, 205.1556003923505],
-    #                 [460, 413.2122585334024],
-    #                 [580, 202.58735616203003],
-    #                 [700, 398.83628908012633]]
     
 def cox_de_boor(k, d, nodes):
     if (d == 0):
@@ -39,19 +29,15 @@ def cox_de_boor(k, d, nodes):
     Bk1 = cox_de_boor(k + 1, d - 1, nodes)
     return lambda u: ((u - nodes[k]) / (nodes[k + d] - nodes[k])) * Bk0(u) + ((nodes[k + d + 1] - u) / (nodes[k + d + 1] - nodes[k + 1])) * Bk1(u)
 
-
 def sampleCurve(pts, step = 0.01):
     n = len(pts)
     b = []
+    nodes = [i for i in range(13)]
     for k in range (len(control_points)):
-        b.append(cox_de_boor(k, spline_degree, NODES))
-    # return b
-    # print(b)
-    sample = [];
+        b.append(cox_de_boor(k, spline_degree, nodes))
+    sample = []
     u = spline_degree
-    mySet = set()
     while(u<=n):
-        # print('u: ', u)
         
         # Ajuste para otimizar a função
         start_u = int(u//1)-spline_degree
@@ -62,118 +48,83 @@ def sampleCurve(pts, step = 0.01):
         for k in range(start_u, end_u+1):
             p = control_points[k]
             w = b[k](u)
-            # print('w = ', w, 'k = ',k)
-            if(w==0):
-                mySet.add(k)
-                # print('w = ', w, 'k = ',k)
-                # print(b[k])
-                # print(u)
             for i in range(2):
                 sum[i] += w * p[i]
         sample.append(sum)
         u += step
-    # print('my set:', mySet)
-    # print('-'*100)
-    # for s in sample:
-    #     print(s)
     return sample
 
-
-
 def display():
-    glClear (GL_COLOR_BUFFER_BIT);
-
+    glClear (GL_COLOR_BUFFER_BIT)
+    glEnable(GL_POINT_SMOOTH)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_BLEND) 
     
-    glEnable (GL_POINT_SMOOTH)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable (GL_BLEND) 
-    glLoadIdentity()
-    
-    # glTranslatef(50.0, 50, 0.0)
-
-    # glPointSize(POINT_DIAMETER)
-    # glBegin(GL_POINTS);
-    # glColor3f(1.0, 1.0, 1.0);
-    # glVertex2f(0.0, 0.0);
-    # glEnd();
-
-    # glPointSize(POINT_DIAMETER-2)
-    # glBegin(GL_POINTS);
-    # glColor3f(0.0, 0.0, 150/255);
-    # glVertex2f(0.0, 0.0);
-    # glEnd();
     i = 0
-    # glEnable( GL_BLEND );
+    # Desenha os pontos de controle
     for point in control_points:
+        # Borda
         glPointSize(POINT_DIAMETER)
-        glBegin(GL_POINTS);
-        glColor3f(0,0,0);
-        glVertex2f(point[0], point[1]);
-        glEnd();
+        glBegin(GL_POINTS)
+        glColor3f(0,0,0)
+        glVertex2f(point[0], point[1])
+        glEnd()
 
+        # Preenchimento
         glPointSize(POINT_DIAMETER*0.95)
-        glBegin(GL_POINTS);
-        # glColor3f(1/255, 112/255, 75/255)
-        glColor3f(0.0, 0.0, 150/255);
-        # glColor3f(0.0, 0.0, 0.0);
-        i+=1
-        glVertex2f(point[0], point[1]);
-        glEnd();
-    
+        glBegin(GL_POINTS)
+        glColor3f(0, 120/255, 1)
+        glVertex2f(point[0], point[1])
+        glEnd()
+
+        # Legenda
         glColor3f(0,0,0)
         glRasterPos2f(point[0]+(POINT_DIAMETER)/2, point[1]-(POINT_DIAMETER)/2)
-        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, ord(str(i)))
-    
+        i+=1
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(str(i)))
 
-
-
-    # glColor4f(1, 0, 0, 0.3)
-    glColor4f(255/255, 0/255, 0/255, 0.3)
-    glPointSize(POINT_DIAMETER/5)
+    # Desenha os pontos de ligação
+    glColor4f(1, 0, 0, 0.3)
+    glPointSize(POINT_DIAMETER*0.45)
     for point in sampleCurve(control_points):
         glBegin(GL_POINTS)
-        glVertex2f(point[0], point[1]);
-        glEnd();
+        glVertex2f(point[0], point[1])
+        glEnd()
     
-    # glColor4f(0/255, 255/255, 0/255, 1)
-    # glPointSize(POINT_DIAMETER/6)
-    # for point in sampleCurveFast(control_points):
-    #     glBegin(GL_POINTS)
-    #     glVertex2f(point[0], point[1]);
-    #     glEnd();
-
-
-    glutSwapBuffers ();
+    # Desenha a legenda com o grau atual
+    glColor3f(1,1,1)
+    glRectf(0, 0, 100, 30)
+    grau_pos = 10
+    glColor3f(0, 0, 0)
+    for c in 'GRAU:'+str(spline_degree):
+        glRasterPos2f(grau_pos,20)
+        grau_pos+=14
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(c))
+        
+    glutSwapBuffers ()
 
 def init ():
-    glClearColor (1.0, 1.0, 1.0, 0.0);
-    # glClearColor (0.0, 0.0, 0.0, 0.0);
-
-def timer(n):
-    global spline_degree
-    spline_degree = (spline_degree + 1)%6
-    glutPostRedisplay();
-    glutTimerFunc(2000,timer,0);
-    # initControlPoints()
+    glClearColor (1.0, 1.0, 1.0, 0.0)
+    initControlPoints()
 
 def reshape(width, height):
-    global WINDOW_WIDTH
-    global WINDOW_HEIGHT
-    WINDOW_WIDTH = width
-    WINDOW_HEIGHT = height
+    global window_width
+    global window_height
+    window_width = width
+    window_height = height
     glViewport(0,0,width,height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluOrtho2D(0,width,height,0)
     glMatrixMode (GL_MODELVIEW)
+    # Ajuste para manter o ponto visível na tela
     for point in control_points:
-        point[0] = min(max(point[0], POINT_DIAMETER/2), WINDOW_WIDTH-(POINT_DIAMETER/2))
-        point[1] = min(max(point[1], POINT_DIAMETER/2), WINDOW_HEIGHT-(POINT_DIAMETER/2))
+        point[0] = min(max(point[0], POINT_DIAMETER/2), window_width-(POINT_DIAMETER/2))
+        point[1] = min(max(point[1], POINT_DIAMETER/2), window_height-(POINT_DIAMETER/2))
 
 picked = None
-
 def mouse (button, state, x, y):
-    global lastx,lasty,picked
+    global picked
     if state!=GLUT_DOWN: return
 
     picked = None
@@ -181,7 +132,6 @@ def mouse (button, state, x, y):
         dist = math.sqrt(math.pow((point[0]-x), 2) + math.pow((point[1]-y), 2))
         if (dist <= POINT_DIAMETER):
             picked = point
-            print(point)
         
     glutPostRedisplay()
 
@@ -189,34 +139,34 @@ def keyboard_handle(key, x, y):
     global spline_degree
     if(key == b'd'):
         spline_degree = max(0, spline_degree-1)
-        print('Diminuir')
     elif(key == b'D'):
         spline_degree = min(5, spline_degree+1)
-        print('Aumentar')
     glutPostRedisplay()
 
 def mouse_drag(x, y):
+    global window_width
+    global window_height
     if picked:
-        picked[0] = min(max(x, POINT_DIAMETER/2), WINDOW_WIDTH-(POINT_DIAMETER/2))
-        picked[1] = min(max(y, POINT_DIAMETER/2), WINDOW_HEIGHT-(POINT_DIAMETER/2))
-    
+        # Ajuste para evitar que ponto saia da janela visível
+        picked[0] = min(max(x, POINT_DIAMETER/2), window_width-(POINT_DIAMETER/2))
+        picked[1] = min(max(y, POINT_DIAMETER/2), window_height-(POINT_DIAMETER/2))
     glutPostRedisplay()
 
 def main():
-    glutInit(sys.argv);
-    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowPosition((glutGet(GLUT_SCREEN_WIDTH)-WINDOW_WIDTH)//2,
-                        (glutGet(GLUT_SCREEN_HEIGHT)-WINDOW_HEIGHT)//2)
-    glutInitWindowSize (WINDOW_WIDTH,WINDOW_HEIGHT)
-    glutCreateWindow ("B-spline demo");
-    init ();
-    initControlPoints()
-    glutDisplayFunc(display); 
+    global window_width
+    global window_height
+    glutInit(sys.argv)
+    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB)
+    glutInitWindowPosition((glutGet(GLUT_SCREEN_WIDTH)-window_width)//2,
+                        (glutGet(GLUT_SCREEN_HEIGHT)-window_height)//2)
+    glutInitWindowSize (window_width,window_height)
+    glutCreateWindow ("B-spline demo")
+    init()
+    glutDisplayFunc(display) 
     glutReshapeFunc(reshape)
     glutMouseFunc(mouse)
     glutMotionFunc(mouse_drag)
     glutKeyboardFunc(keyboard_handle)
-    # glutTimerFunc(2000,timer,0);
-    glutMainLoop();
+    glutMainLoop()
 
 main()
